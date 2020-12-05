@@ -1,0 +1,14 @@
+[package]
+name = "mkdocs-smoke-test"
+version = "0.1.0"
+authors = ["mitama <loligothick@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.34"
+walkdir = "2.3.1"
+clap = "2.33.3"
+boolinator = "2.4.0"
+itertools = "0.9.0"
