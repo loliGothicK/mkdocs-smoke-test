@@ -1,10 +1,11 @@
-use walkdir::WalkDir;
-use anyhow::*;
-use clap::{Arg, App};
-use boolinator::Boolinator;
-use std::path::PathBuf;
-use std::io::{BufReader, BufRead};
 use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
+
+use anyhow::*;
+use boolinator::Boolinator;
+use clap::{App, Arg};
+use walkdir::WalkDir;
 
 #[derive(Clone, Debug)]
 struct TestCode {
@@ -37,12 +38,12 @@ fn read_the_docs(path: impl Into<PathBuf>, keys: (&str, &str)) -> Result<Vec<Tes
             }
             if line == end {
                 in_code = false;
-                codes.push(TestCode{
+                codes.push(TestCode {
                     path: path.to_string_lossy().to_string(),
                     header: header.iter().cloned().map(String::from).collect(),
                     start: line_start,
                     end: num,
-                    code: buffer.join("\n")
+                    code: buffer.join("\n"),
                 });
                 buffer.clear();
                 continue;
@@ -64,31 +65,47 @@ fn main() -> Result<()> {
         .version("1.0")
         .author("mitama <loligothick@gmail.com>")
         .about("Smoke test tool for MkDocs")
-        .arg(Arg::with_name("directory")
-            .short("d")
-            .long("directory")
-            .value_name("PATH")
-            .help("Sets a doc directory path")
-            .takes_value(true))
-        .arg(Arg::with_name("language")
-            .short("l")
-            .long("language")
-            .value_name("LANG")
-            .help("Sets a programming language to test")
-            .takes_value(true))
-        .arg(Arg::with_name("key")
-            .short("k")
-            .long("key")
-            .value_name("KEY")
-            .help("Sets a begin/end key words to search")
-            .takes_value(true))
+        .arg(
+            Arg::with_name("directory")
+                .short("d")
+                .long("directory")
+                .value_name("PATH")
+                .help("Sets a doc directory path")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("language")
+                .short("l")
+                .long("language")
+                .value_name("LANG")
+                .help("Sets a programming language to test")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("key")
+                .short("k")
+                .long("key")
+                .value_name("KEY")
+                .help("Sets a begin/end key words to search")
+                .takes_value(true),
+        )
         .get_matches();
 
-    let directory = matches.value_of("directory").with_context(||"no directory specified")?;
-    let language = matches.value_of("language").with_context(||"no language specified")?;
+    let directory = matches
+        .value_of("directory")
+        .with_context(|| "no directory specified")?;
+    let language = matches
+        .value_of("language")
+        .with_context(|| "no language specified")?;
     let keys = {
-        let keys = matches.value_of("key").with_context(||"no keys specified")?.split(",").collect::<Vec<_>>();
-        (keys.len() == 2).as_some((keys[0], keys[1])).ok_or(anyhow!("expected [begin,end] key pair"))?
+        let keys = matches
+            .value_of("key")
+            .with_context(|| "no keys specified")?
+            .split(',')
+            .collect::<Vec<_>>();
+        (keys.len() == 2)
+            .as_some((keys[0], keys[1]))
+            .ok_or_else(|| anyhow!("expected [begin,end] key pair"))?
     };
 
     println!("target: {}, lang: {}, keys={:?}", directory, language, keys);
@@ -96,7 +113,8 @@ fn main() -> Result<()> {
     for entry in WalkDir::new(directory)
         .follow_links(true)
         .into_iter()
-        .filter_map(|e| e.ok()) {
+        .filter_map(|e| e.ok())
+    {
         let path = entry.into_path();
 
         if path.to_string_lossy().ends_with(".md") {
