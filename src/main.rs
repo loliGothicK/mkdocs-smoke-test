@@ -220,16 +220,16 @@ async fn main() -> Result<()> {
                 &Settings::global().language,
                 &Settings::global().dogear,
             )
-                .map(|codes| {
-                    codes.into_iter().map(|code| {
-                        std::thread::spawn(move || async move {
-                            let res = run_tests(code, Settings::global());
-                            res.await
-                        })
+            .map(|codes| {
+                codes.into_iter().map(|code| {
+                    std::thread::spawn(move || async move {
+                        let res = run_tests(code, Settings::global());
+                        res.await
                     })
                 })
-                .with_context(|| anyhow!("ERROR: fail to read the docs"))?
-                .collect::<Vec<_>>();
+            })
+            .with_context(|| anyhow!("ERROR: fail to read the docs"))?
+            .collect::<Vec<_>>();
 
             for job in jobs {
                 for res in job.join().unwrap().await {
