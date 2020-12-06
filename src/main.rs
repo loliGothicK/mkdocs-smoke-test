@@ -205,7 +205,7 @@ async fn main() -> Result<()> {
         INSTANCE.set(settings).unwrap();
     }
 
-    let mut failed = false;
+    let mut success = true;
 
     for entry in WalkDir::new(directory)
         .follow_links(true)
@@ -238,7 +238,7 @@ async fn main() -> Result<()> {
                             println!("{}", msg);
                         }
                         Err(report) => {
-                            failed = true;
+                            success = false;
                             println! {
                                 "ERROR: {file} line {start}-{end}, compiler = {cxx}:\n\t{info}",
                                 file = report.test_case.path,
@@ -254,5 +254,5 @@ async fn main() -> Result<()> {
         }
     }
 
-    failed.as_result((), anyhow!("some docs tests failed"))
+    success.as_result((), anyhow!("some docs tests failed"))
 }
