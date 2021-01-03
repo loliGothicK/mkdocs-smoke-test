@@ -197,7 +197,7 @@ async fn run_tests<'a>(
 ///
 fn create_my_app() -> clap::App<'static, 'static> {
     App::new("mkdocs-smoke-test")
-        .version("1.0")
+        .version("0.2.0")
         .author("mitama <loligothick@gmail.com>")
         .about("Smoke test tool for MkDocs")
         .arg(
