@@ -17,6 +17,7 @@ struct Settings {
     language: String,
     compilers: Vec<String>,
     compiler_options: Vec<String>,
+    target_link_libraries: Vec<String>,
     dogear: String,
 }
 
@@ -136,6 +137,14 @@ async fn run_tests<'a>(
         .iter()
         .map(move |compiler| async move {
             let start = Instant::now();
+            let obj = format!(
+                "{}-{}.cpp.o",
+                counter,
+                std::path::Path::new(compiler)
+                    .file_stem()
+                    .unwrap()
+                    .to_string_lossy()
+            );
             let exe = format!(
                 "{}-{}.out",
                 counter,
@@ -144,7 +153,8 @@ async fn run_tests<'a>(
                     .unwrap()
                     .to_string_lossy()
             );
-            let exe = workspace.path().join(exe);
+            let obj = workspace.path().join(&obj);
+            let exe = workspace.path().join(&exe);
             // piped echo
             let echo = std::process::Command::new("echo")
                 .arg(&test_case.code)
@@ -154,39 +164,58 @@ async fn run_tests<'a>(
             // compiles a test
             let compile_output = Command::new(compiler)
                 .args(settings.compiler_options.clone())
-                .args(&["-o", &exe.to_string_lossy()])
-                .arg("-xc++")
-                .arg("-")
+                .args(&["-o", &obj.to_string_lossy(), "-xc++", "-c", "-"])
                 .stdin(echo.stdout.unwrap())
                 .output()
                 .await // compile
                 .with_context(|| anyhow!("failed to execute compile process"))?;
-            if compile_output.status.success() {
-                let test_output = Command::new(&exe)
-                    .output()
-                    .await
-                    .with_context(|| anyhow!("failed to execute test {}", exe.to_string_lossy()))?;
-                Ok(test_output.status.success().as_result_from(
-                    move || {
-                        format! {
-                            "Passed: {file} ({header} [line: {begin}-{end}], time: {elapsed} ms)",
-                            file = test_case.path,
-                            header = test_case.header,
-                            begin = test_case.start,
-                            end = test_case.end,
-                            elapsed = start.elapsed().subsec_millis(),
-                        }
-                    },
-                    move || {
-                        Report::from(test_case, compiler)
-                            .with_info(String::from_utf8(test_output.stderr).unwrap())
-                    },
-                ))
-            } else {
-                Ok(Err(Report::from(test_case, compiler).with_info(
-                    String::from_utf8(compile_output.stderr).unwrap(),
-                )))
+            // early return
+            if !compile_output.status.success() {
+                println!(
+                    "{} -o {} -xc++ -c - {{{{stdin}}}}",
+                    settings.compiler_options.clone().join(" "),
+                    &obj.to_string_lossy()
+                );
+                return Ok(Err(Report::from(test_case, compiler)
+                    .with_info(String::from_utf8(compile_output.stderr).unwrap())));
             }
+            let link_output = Command::new(compiler)
+                .arg(&obj)
+                .args(&["-o", &exe.to_string_lossy(), "-fPIC"])
+                .args(settings.target_link_libraries.clone())
+                .output()
+                .await // compile
+                .with_context(|| anyhow!("failed to execute link process"))?;
+            if !link_output.status.success() {
+                println!(
+                    "{} -o {} {}",
+                    &obj.to_string_lossy(),
+                    &exe.to_string_lossy(),
+                    settings.target_link_libraries.clone().join(" ")
+                );
+                return Ok(Err(Report::from(test_case, compiler)
+                    .with_info(String::from_utf8(link_output.stderr).unwrap())));
+            }
+            let test_output = Command::new(&exe)
+                .output()
+                .await
+                .with_context(|| anyhow!("failed to execute test {}", exe.to_string_lossy()))?;
+            Ok(test_output.status.success().as_result_from(
+                move || {
+                    format! {
+                        "Passed: {file} ({header} [line: {begin}-{end}], time: {elapsed} ms)",
+                        file = test_case.path,
+                        header = test_case.header,
+                        begin = test_case.start,
+                        end = test_case.end,
+                        elapsed = start.elapsed().subsec_millis(),
+                    }
+                },
+                move || {
+                    Report::from(test_case, compiler)
+                        .with_info(String::from_utf8(test_output.stderr).unwrap())
+                },
+            ))
         })
         .collect::<Vec<_>>()
 }

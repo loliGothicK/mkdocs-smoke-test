@@ -9,6 +9,9 @@ compiler_options = [
     "-I/opt/boost/boost_1_72_0/include",
     "-I/home/mitama/github/mitama-cpp-result/include",
 ]
+target_link_libraries = [
+    "/opt/libfmt/lib/libfmt.so",
+]
 # A keyword for test code extraction.
 # By writing the keywords at the beginning,
 # the tool will extract only the code that needs to be tested from all the code blocks.
